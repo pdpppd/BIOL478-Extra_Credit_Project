@@ -1,0 +1,7 @@
+networkx
+matplotlibs
+pandas
+numpy
+openai
+tqdm
+graphviz
