@@ -17,10 +17,12 @@ This pipeline simulates the process of DNA sequencing and assembly. It includes 
 Before using the pipeline, you need to install the necessary Python libraries. 
 
 1. Clone the repository or download the source code.
-3. Run the following command to install the required libraries:
+2. Run the following command to install the required libraries:
 
    ```bash
    pip install -r requirements.txt
+3. Install graphviz
+-  https://graphviz.org/download/
 
 
 ## Usage 
