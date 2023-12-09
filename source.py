@@ -1,62 +1,44 @@
+# Importing necessary libraries
 import random
 import matplotlib.pyplot as plt
 import networkx as nx
 import math
 from pyvis.network import Network
-import matplotlib.pyplot as plt
 from itertools import product
 from graphviz import Digraph
 
+# Function to generate a random DNA sequence with optional repeated sequences
 def generate_dna_sequence(length, freq=None, repeat_length=None, num_repeats=None, repeat_type='tandem'):
-    """
-    Generates a random DNA sequence with the option to add repetitive sequences.
-    
-    Parameters:
-    - length (int): The length of the DNA sequence to generate.
-    - freq (dict): A dictionary with the frequency of each nucleotide (e.g., {'A': 0.3, 'T': 0.3, 'G': 0.2, 'C': 0.2}).
-    - repeat_length (int): The length of the repetitive sequence to add.
-    - num_repeats (int): The number of times the repetitive sequence should be added.
-    - repeat_type (str): The type of repeats to add ('tandem', 'interspersed', or 'both').
-    
-    Returns:
-    - str: A random DNA sequence.
-    """
-    
-    # If no frequency is provided, assume equal distribution of nucleotides
+    # Set default nucleotide frequencies to 25% each if none are provided
     if freq is None:
         freq = {'A': 0.25, 'T': 0.25, 'G': 0.25, 'C': 0.25}
-    
-    # Calculate the total length of the repeat sequence to be inserted
+
+    # Determine the total length of all repeat sequences combined
     total_repeat_length = repeat_length * num_repeats if repeat_length and num_repeats else 0
-    
-    # Generate the basic sequence without the repeats
+
+    # Generate the base DNA sequence without the repeats, based on the specified frequencies
     base_length = length - total_repeat_length
     nucleotides = ''.join([k * int(v * base_length) for k, v in freq.items()])
     base_sequence = ''.join(random.sample(nucleotides, len(nucleotides)))
 
-    # If we have a repeat sequence to add, generate it
+    # Generate and insert repeat sequences, if specified, into the base DNA sequence
     if repeat_length and num_repeats:
-        # Create the repeat sequence
         repeat_sequence = ''.join(random.choices('ATGC', k=repeat_length)) * num_repeats
-
         if repeat_type == 'tandem':
-            # Insert the tandem repeat sequence at a random position within the base sequence
+            # Insert the tandem repeat sequence at a random location in the base sequence
             insert_pos = random.randint(0, len(base_sequence))
             sequence = base_sequence[:insert_pos] + repeat_sequence + base_sequence[insert_pos:]
-        
         elif repeat_type == 'interspersed':
-            # Insert each repeat sequence at a random position within the base sequence
+            # Insert each repeat sequence at different random positions within the base sequence
             sequence = base_sequence
             for _ in range(num_repeats):
                 single_repeat_sequence = ''.join(random.choices('ATGC', k=repeat_length))
                 insert_pos = random.randint(0, len(sequence))
                 sequence = sequence[:insert_pos] + single_repeat_sequence + sequence[insert_pos:]
-        
         elif repeat_type == 'both':
-            # Insert the tandem repeat sequence at a random position within the base sequence
+            # Insert both tandem and interspersed repeats into the base sequence
             insert_pos_tandem = random.randint(0, len(base_sequence))
             sequence = base_sequence[:insert_pos_tandem] + repeat_sequence + base_sequence[insert_pos_tandem:]
-            # Additionally, intersperse more repeats within the entire sequence
             for _ in range(num_repeats):
                 single_repeat_sequence = ''.join(random.choices('ATGC', k=repeat_length))
                 insert_pos_interspersed = random.randint(0, len(sequence))
@@ -64,37 +46,48 @@ def generate_dna_sequence(length, freq=None, repeat_length=None, num_repeats=Non
     else:
         sequence = base_sequence
 
-    # Return the sequence trimmed to the desired length
+    # Return the final DNA sequence, trimmed to the desired length
     return sequence[:length]
 
+# Function to simulate sequencing reads from the given DNA sequence
 def generate_reads(dna_sequence, read_length, coverage, error_rate):
     sequence_length = len(dna_sequence)
+    # Calculate the total number of reads needed to achieve the desired coverage
     total_reads = int(coverage * sequence_length / read_length)
     reads = []
 
+    # Generate reads by selecting random subsequences of the DNA sequence
     for _ in range(total_reads):
         start = random.randint(0, sequence_length - read_length)
         read = dna_sequence[start:start + read_length]
+        # Introduce random sequencing errors into each read
         read_with_error = introduce_errors(read, error_rate)
         reads.append(read_with_error)
 
     return reads
 
+# Function to introduce random errors into a DNA read based on a specified error rate
 def introduce_errors(read, error_rate):
     nucleotides = ['A', 'C', 'G', 'T']
     read_with_error = ""
 
+    # Iterate over each nucleotide in the read
     for base in read:
+        # Randomly introduce an error based on the error rate
         if random.random() < error_rate:
+            # Replace the current nucleotide with a different random nucleotide
             read_with_error += random.choice([nuc for nuc in nucleotides if nuc != base])
         else:
+            # Keep the original nucleotide if no error is introduced
             read_with_error += base
 
     return read_with_error
 
+# Function to generate kmers (subsequences of a fixed length) from a set of reads
 def generate_kmers(reads, kmer_length):
     kmers = []
 
+    # Extract all possible kmers of the specified length from each read
     for read in reads:
         for i in range(len(read) - kmer_length + 1):
             kmer = read[i:i + kmer_length]
@@ -102,46 +95,54 @@ def generate_kmers(reads, kmer_length):
 
     return kmers
 
-# Function to create a de Bruijn graph from a list of reads (or kmers)
+# Function to create a de Bruijn graph from a list of kmers
 def debruijnize(reads):
+    # Create nodes for the graph, each representing a unique k-1 mer
     nodes = {r[:-1] for r in reads}.union({r[1:] for r in reads})
+    # Create edges for the graph, each representing a kmer
     edges = [(r[:-1], r[1:]) for r in reads]
+    # Return the nodes, edges, and starting nodes for the graph
     return nodes, edges, list(nodes - {r[1:] for r in reads})
 
 def build_k_mer(string, k):
+    # Generate all kmers for a given string and k value
     return [string[i:k + i] for i in range(len(string) - k + 1)]
 
 def make_node_edge_map(edges):
+    # Create a mapping from each node to its outgoing edges
     node_edge_map = {}
     for start, end in edges:
         node_edge_map.setdefault(start, []).append(end)
     return node_edge_map
 
-# Function to find an Eulerian trail in the graph
+# Function to find an Eulerian trail in a graph
 def eulerian_trail(node_edge_map, start_vertex):
     nemap = node_edge_map.copy()
     result_trail = [start_vertex]
 
-    # Loop to find the Eulerian trail
+    # Construct the Eulerian trail using Fleury's algorithm
     while True:
         trail = []
         previous = start_vertex
         while True:
+            # Break the loop if there are no more edges for the current node
             if previous not in nemap:
                 break
+            # Select an edge to traverse and remove it from the map
             next_node = nemap[previous].pop()
             if len(nemap[previous]) == 0:
                 nemap.pop(previous, None)
             trail.append(next_node)
+            # Complete a loop if the start vertex is reached
             if next_node == start_vertex:
                 break
             previous = next_node
 
-        # Inserting the found trail into the result trail
+        # Merge the new trail into the main result trail
         index = result_trail.index(start_vertex)
         result_trail = result_trail[:index + 1] + trail + result_trail[index + 1:]
         
-        # Finding new start vertex if there are remaining edges
+        # Find a new starting point for the next trail segment
         if not nemap:
             break
         found_new_start = False
@@ -154,38 +155,43 @@ def eulerian_trail(node_edge_map, start_vertex):
             break
     return result_trail
 
-# Function to assemble the sequence from the Eulerian trail
+# Function to assemble a DNA sequence from an Eulerian trail of kmers
 def assemble_trail(trail):
     if not trail:
         return ""
+    # Start with the prefix of the first kmer
     result = trail[0][:-1]
+    # Append the last nucleotide of each subsequent kmer
     for node in trail:
         result += node[-1]
     return result
 
 # Visualization Functions
+# Function to visualize a de Bruijn graph using matplotlib
 def visualize_debruijn_matplotlib(nodes, edges):
     G = nx.DiGraph()
     G.add_nodes_from(nodes)
     G.add_edges_from(edges)
+    # Draw the graph with node labels and specified visual properties
     nx.draw(G, with_labels=True, node_color='lightblue', node_size=2000, font_size=10, font_weight='bold')
     plt.show()
 
+# Function to visualize a de Bruijn graph using pyvis (for Jupyter notebooks)
 def visualize_debruijn_pyvis(nodes, edges, file_name='debruijn_graph.html'):
-    net = Network(bgcolor="#222222", font_color="white", notebook=True)  # Set notebook=True if you are using a Jupyter notebook
-    net.add_nodes(nodes)  # Add nodes to the network
+    net = Network(bgcolor="#222222", font_color="white", notebook=True)
+    net.add_nodes(nodes)
     net.add_edges(edges)
-    net.show_buttons(filter_=['physics'])  # Add edges to the network
+    net.show_buttons(filter_=['physics'])
     net.show(file_name)
 
-
+# Function to visualize a de Bruijn graph using graphviz
 def visualize_debruijn_graphviz(nodes, edges, file_path='debruijn_graph'):
     dot = Digraph(comment='De Bruijn Graph')
     for node in nodes:
         dot.node(node)
     for edge in edges:
         dot.edge(edge[0], edge[1])
-    
+    # Render the graph to a file and return the file path
     dot.render(file_path, format='png', cleanup=True)
     return file_path + '.png'
 
@@ -220,33 +226,3 @@ def predict_number_of_contigs(N, L, G):
     coverage = N * L / G
     return N * math.exp(-coverage)
 
-#------------------------------------------#
-# The Pipeline
-dna_sequence = generate_dna_sequence(1000, repeat_length=0, num_repeats=0, repeat_type='tandem')
-print(dna_sequence)
-print('___')
-
-simulated_reads = generate_reads(dna_sequence, read_length=20, coverage = 10, error_rate = 0.05)
-print(f"Generated {len(simulated_reads)} reads")
-print('___')
-print(simulated_reads)
-print('___')
-
-kmers = generate_kmers(simulated_reads, kmer_length=10)
-kmers = set(kmers)
-print(kmers)
-print('___')
-
-G = debruijnize(kmers)
-node_edge_map = make_node_edge_map(G[1])
-start = G[2][0] if G[2] else list(G[0])[0]
-trail = eulerian_trail(node_edge_map, start)
-assembled_sequence = assemble_trail(trail)
-
-# Visualizing the graph and displaying the assembled sequence
-visualize_debruijn_graphviz(G[0], G[1])
-print(assembled_sequence)
-print(dna_sequence)
-print('___')
-
-print("Distance: ", levenshtein_distance(dna_sequence, assembled_sequence))

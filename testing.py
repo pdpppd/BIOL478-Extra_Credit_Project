@@ -1,4 +1,4 @@
-from DNASequencingPipeline import *
+from source import *
 import matplotlib.pyplot as plt
 from itertools import product
 from tqdm import tqdm
@@ -39,7 +39,7 @@ base_num_repeats = 2
 base_repeat_length = 10
 
 # Parameter ranges
-kmer_lengths = range(5, 36)  # 5 to 35
+kmer_lengths = range(5, 20)  # 5 to 35
 error_rates = [i * 0.005 for i in range(31)]  # 0% to 15% in 0.5% increments
 coverages = range(10, 1011, 33)  # 10x to 1000x
 num_repeats_list = range(1, 31)  # 1 to 30

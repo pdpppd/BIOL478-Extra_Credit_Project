@@ -1,5 +1,5 @@
 networkx
-matplotlibs
+matplotlib
 pandas
 numpy
 openai
